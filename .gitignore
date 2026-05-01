@@ -1,0 +1,24 @@
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
+
+# Build outputs
+target/
+build/
+out/
+
+# Logs
+*.log
+
+# Harness runtime/tooling files excluded from submission
+AGENTS.md
+CLAUDE.md
+GEMINI.md
+docs/process/
+docs/project/decisions/
+scripts/validate_overlay_*.py
+scripts/validate_phase_gate.py
+
+# Vendored harness source should not be committed
+harness-kit/
