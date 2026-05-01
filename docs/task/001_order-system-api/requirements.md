@@ -75,5 +75,10 @@
 
 ## 결정된 정책
 
-- 주문 상태 전이와 재고 처리 정책은 `docs/project/decisions/DEC-001-order-state-and-stock-policy.md`를 따른다.
-- 상품 재고 동시성 처리 정책은 `docs/project/decisions/DEC-002-stock-concurrency-policy.md`를 따른다.
+- 주문 생성 시에는 재고를 차감하지 않는다.
+- `COMPLETED` 상태로 변경될 때 주문 항목 수량만큼 재고를 차감한다.
+- `COMPLETED` 상태의 주문이 `CANCELED` 상태로 변경될 때 차감된 재고를 복구한다.
+- `PENDING` 또는 `ACCEPTED` 상태에서 취소될 경우 재고 복구를 수행하지 않는다.
+- 허용 상태 전이는 `PENDING -> ACCEPTED`, `ACCEPTED -> COMPLETED`, `PENDING -> CANCELED`, `ACCEPTED -> CANCELED`, `COMPLETED -> CANCELED`로 제한한다.
+- 주문 완료 처리 시 재고 차감 대상 상품 row에 비관적 락을 적용한다.
+- 여러 상품을 동시에 차감할 때는 상품 ID 기준으로 정렬해 락 획득 순서를 일정하게 유지한다.

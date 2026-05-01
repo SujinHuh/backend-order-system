@@ -64,6 +64,7 @@
 접수 -> 완료
 대기 -> 취소
 접수 -> 취소
+완료 -> 취소
 ```
 
 다음과 같은 상태 변경은 허용하지 않습니다.
@@ -90,6 +91,8 @@
 - 재고 차감과 주문 상태 변경은 하나의 트랜잭션 안에서 처리합니다.
 
 주문이 취소될 경우, 이미 차감된 재고가 있다면 주문 항목 수량만큼 재고를 복구합니다.
+
+주문 생성 시점에는 재고를 차감하지 않습니다. 따라서 대기 또는 접수 상태에서 취소되는 주문은 복구할 재고가 없고, 완료 상태에서 취소되는 주문에 대해서만 재고 복구를 수행합니다.
 
 ## API 설계 방향
 
@@ -199,6 +202,18 @@ GET /api/orders?page=0&size=20
 ```
 
 이 과정을 하나의 트랜잭션으로 묶어, 동시에 주문 완료 요청이 들어오더라도 재고가 음수가 되거나 중복 차감되지 않도록 합니다.
+
+여러 상품의 재고를 한 주문에서 함께 차감할 때는 상품 ID 기준으로 정렬해 락 획득 순서를 일정하게 유지합니다. 이를 통해 동시 주문 처리 중 deadlock 가능성을 줄입니다.
+
+## 문서 구조
+
+- `requirements.md`: 과제 원문 중 구현 대상 요구사항
+- `docs/project/standards/architecture.md`: API 서버 구조, 도메인 모델, 상태 전이, 트랜잭션/동시성 정책
+- `docs/project/standards/implementation_order.md`: 구현 레이어 순서
+- `docs/project/standards/testing_profile.md`: 테스트 전략과 필수 검증 범위
+- `docs/project/standards/quality_gate_profile.md`: 품질 게이트와 실패 기준
+- `docs/task/001_order-system-api/requirements.md`: 구현 단위 요구사항 분석
+- `docs/task/001_order-system-api/plan.md`: 구현 계획
 
 ## 테스트 계획
 

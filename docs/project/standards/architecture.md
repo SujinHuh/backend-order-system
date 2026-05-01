@@ -119,7 +119,17 @@ com.example.ordersystem
 - `COMPLETED`: 완료
 - `CANCELED`: 취소
 
-상태 전이 규칙은 `docs/project/decisions/DEC-001-order-state-and-stock-policy.md`를 따른다.
+허용 상태 전이는 다음으로 제한한다.
+
+```text
+PENDING -> ACCEPTED
+ACCEPTED -> COMPLETED
+PENDING -> CANCELED
+ACCEPTED -> CANCELED
+COMPLETED -> CANCELED
+```
+
+주문 생성 시에는 재고를 차감하지 않는다. `COMPLETED`로 변경될 때 주문 항목 수량만큼 재고를 차감하고, `COMPLETED` 상태의 주문이 `CANCELED`로 변경될 때 차감된 재고를 복구한다.
 
 ## 의존성 원칙
 
@@ -140,4 +150,6 @@ com.example.ordersystem
 - 상품 등록, 수정은 service 메서드 단위 트랜잭션으로 처리한다.
 - 주문 생성은 주문과 주문 항목 저장을 하나의 트랜잭션으로 처리한다.
 - 주문 상태 변경은 상태 변경과 재고 변경을 하나의 트랜잭션으로 처리한다.
-- 재고 동시성 정책은 `docs/project/decisions/DEC-002-stock-concurrency-policy.md`를 따른다.
+- 주문 완료 처리 시 재고 차감 대상 상품 row에 비관적 락을 적용한다.
+- 재고 검증, 재고 차감, 주문 상태 변경은 같은 트랜잭션 안에서 수행한다.
+- 여러 상품을 동시에 차감할 때는 상품 ID 기준으로 정렬해 락 획득 순서를 일정하게 유지한다.
