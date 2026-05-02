@@ -17,6 +17,9 @@
 - 독립 감사에서 주문 상태 변경 자체의 동시성 정책, 카테고리 enum 값, 동일 상태 변경 정책, 주문 목록 기간 조건 경계가 보강 필요 항목으로 확인됐다.
 - 사용자 승인 후 README, architecture, task requirements/plan, DEC-001, DEC-002에 주문 row 비관적 락, 동일 상태 변경 실패 처리, 초기 지원 카테고리, 주문 목록 조건 형식을 반영했다.
 - decision 문서 반영이 포함되어 `phase_status.md`의 allowed write-set에 `docs/project/decisions/*`를 추가했다.
+- 기능별 이슈 분리 감사 결과를 반영해 QueryDSL은 스캐폴딩에서 의존성/annotation processor/Q-class 생성 확인까지만 담당하고, 실제 custom 조회 구현은 `feat/query-apis`에서 수행하도록 `plan.md` 범위를 정리했다.
+- `001_order-system-api`는 전체 과제의 상위 마스터 task로 유지하고, 실제 구현은 `002_scaffold-common-setup`부터 기능별 task workspace에서 진행하기로 정리했다.
+- `docs/project/standards/implementation_order.md`에도 QueryDSL custom repository 구현 범위를 `feat/query-apis` task로 분리한다는 단서를 추가했다.
 
 ## 구현 중 결정 기록
 
