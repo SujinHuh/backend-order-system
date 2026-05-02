@@ -2,36 +2,36 @@
 
 ## 변경 대상 파일 또는 모듈
 
-- `src/main/java/com/example/ordersystem/domain/product/Product.java`
-- `src/main/java/com/example/ordersystem/domain/product/Category.java`
-- `src/main/java/com/example/ordersystem/domain/product/ProductRepository.java`
-- `src/main/java/com/example/ordersystem/domain/product/ProductService.java`
-- `src/main/java/com/example/ordersystem/api/product/ProductController.java`
-- `src/main/java/com/example/ordersystem/api/product/dto/*`
-- `src/main/java/com/example/ordersystem/global/common/BaseTimeEntity.java` (선택 사항, 직접 엔티티에 넣을 수도 있음)
-- `src/test/java/com/example/ordersystem/domain/product/ProductTest.java`
-- `src/test/java/com/example/ordersystem/domain/product/ProductServiceTest.java`
-- `src/test/java/com/example/ordersystem/api/product/ProductControllerTest.java`
+- `src/main/java/com/example/ordersystem/product/domain/Product.java`
+- `src/main/java/com/example/ordersystem/product/domain/Category.java`
+- `src/main/java/com/example/ordersystem/product/domain/ProductRepository.java`
+- `src/main/java/com/example/ordersystem/product/service/ProductService.java`
+- `src/main/java/com/example/ordersystem/product/controller/ProductController.java`
+- `src/main/java/com/example/ordersystem/product/controller/dto/*`
+- `src/test/java/com/example/ordersystem/product/domain/ProductTest.java`
+- `src/test/java/com/example/ordersystem/product/service/ProductServiceTest.java`
+- `src/test/java/com/example/ordersystem/product/controller/ProductControllerTest.java`
 
 ## 레이어별 작업 계획
 
 ### 1. 도메인 및 엔티티 구현
-- `Category` Enum 구현
-- `Product` 엔티티 구현: 필드 정의, JPA 매핑, 생성/수정일 Auditing 적용
+- `Category` Enum 구현 (FOOD, FASHION 등)
+- `Product` 엔티티 구현: Domain-First 패키지(`product.domain`) 적용
 - 비즈니스 로직(가격 검증, 재고 관리) 구현 및 **단위 테스트** 작성
 
 ### 2. Repository 레이어
 - `ProductRepository` 인터페이스 생성 (Spring Data JPA)
 
 ### 3. Service 레이어
-- `ProductService` 구현: 등록, 수정, 조회(단건/전체)
-- 트랜잭션 관리 및 예외 처리 연동 (`EntityNotFoundException` 등)
+- `ProductService` 구현: 등록, 수정, 단건 조회, 페이징 목록 조회
+- 트랜잭션 관리 및 예외 처리 연동
 - **통합 테스트** 작성
 
 ### 4. Controller 및 DTO
-- `ProductController` 구현: REST API 엔드포인트 매핑
-- Request/Response DTO 정의
-- Bean Validation 적용 및 **슬라이스 테스트** 작성
+- `ProductController` 구현: `/api/products` 엔드포인트 매핑
+- `Pageable`을 이용한 목록 조회 구현
+- Request/Response DTO 정의 및 Validation 적용
+- **슬라이스 테스트** 작성
 
 ## 테스트 계획
 
