@@ -2,11 +2,13 @@
 .DS_Store
 .idea/
 .vscode/
+*.iml
 
 # Build outputs
 target/
 build/
 out/
+!.mvn/wrapper/maven-wrapper.jar
 
 # Logs
 *.log

@@ -2,10 +2,10 @@
 
 ## Current State
 
-- Task Status: `active`
-- Current Phase: `Phase 1`
-- Current Gate: `planning approval`
-- Last Approved Phase: `없음`
+- Task Status: `completed`
+- Current Phase: `Phase 5`
+- Current Gate: `close-out complete`
+- Last Approved Phase: `Phase 4`
 
 ## Allowed Write Set
 
@@ -19,8 +19,14 @@
 - `mvnw`
 - `mvnw.cmd`
 - `.mvn/**`
+- `.mvn/**/*`
 - `.gitignore`
-- `src/**`
+- `src/**/*`
+- `src/main/java/com/example/ordersystem/OrderSystemApplication.java`
+- `src/main/resources/application.yml`
+- `src/test/java/com/example/ordersystem/OrderSystemApplicationTests.java`
+- `src/test/java/com/example/ordersystem/support/QuerydslProbeEntity.java`
+- `src/test/resources/mockito-extensions/org.mockito.plugins.MockMaker`
 - `README.md`
 - `docs/project/standards/architecture.md`
 - `docs/project/standards/implementation_order.md`
@@ -38,9 +44,9 @@
 
 ## Next Action
 
-- Phase 1 산출물을 검토한 뒤 Phase 2 구현으로 이동한다.
+- 변경 파일을 커밋한다.
 
 ## Cleanup
 
 - Task 종료 전 유지: `yes`
-- Task 종료 후 정리: `Phase 5` close-out 완료 뒤 최종 상태를 `implementation_notes.md`와 `validation_report.md`에 남기고 삭제할 수 있다.
+- Task 종료 후 정리: 최종 상태를 `implementation_notes.md`와 `validation_report.md`에 남겼으므로 필요 시 후속 정리 대상이다.
