@@ -17,6 +17,7 @@
 - `$TASK/validation_report.md`
 - `README.md`
 - `docs/project/standards/*`
+- `docs/project/decisions/*`
 
 ## Locked Paths
 

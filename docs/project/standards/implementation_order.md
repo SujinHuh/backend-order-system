@@ -17,6 +17,7 @@
 1. 프로젝트 스캐폴딩
    - Maven 기반 Spring Boot 프로젝트 생성
    - Java 17, Spring Boot 3, JPA, H2, QueryDSL 설정
+   - QueryDSL 의존성, annotation processor, Q-class 생성 가능 여부 확인
    - 공통 패키지 구조 생성
 
 2. 공통 기반
@@ -37,6 +38,8 @@
    - Product JPA repository
    - Order JPA repository
    - QueryDSL custom repository
+     - 의존성과 Q-class 생성 확인은 스캐폴딩 단계에서 수행한다.
+     - 실제 조건 조합 조회와 custom repository 구현은 `feat/query-apis` task에서 수행한다.
    - 재고 차감용 lock 조회 메서드
 
 5. Service
@@ -61,7 +64,7 @@
 
 - 상품과 주문은 별도 도메인 패키지로 분리한다.
 - 주문 상태 변경과 재고 변경은 주문 service 안의 하나의 유스케이스로 묶는다.
-- QueryDSL 조회 구현은 repository custom 구현으로 분리한다.
+- QueryDSL 조회 구현은 repository custom 구현으로 분리하되, 기능별 구현 중에는 기본 JPA 조회와 custom 조건 조회의 책임을 task별로 나눈다.
 - 공통 예외 처리는 `global.error`에 둔다.
 
 ## 기록 규칙
