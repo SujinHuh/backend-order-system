@@ -95,6 +95,18 @@ com.example.ordersystem
 
 상품은 재고 차감과 복구 메서드를 제공한다.
 
+### Category
+
+상품 카테고리는 초기 지원 enum 값으로 다음을 사용한다.
+
+- `FOOD`
+- `FASHION`
+- `ELECTRONICS`
+- `BOOK`
+- `ETC`
+
+DB에는 enum 이름을 문자열로 저장한다.
+
 ### Order
 
 - 주문 상태
@@ -129,7 +141,62 @@ ACCEPTED -> CANCELED
 COMPLETED -> CANCELED
 ```
 
+현재 상태와 동일한 상태로 변경하는 요청은 허용 상태 전이에 포함하지 않는다. 동일 상태 변경 요청은 멱등 성공으로 처리하지 않고, 허용되지 않은 주문 상태 변경 예외로 응답한다.
+
 주문 생성 시에는 재고를 차감하지 않는다. `COMPLETED`로 변경될 때 주문 항목 수량만큼 재고를 차감하고, `COMPLETED` 상태의 주문이 `CANCELED`로 변경될 때 차감된 재고를 복구한다.
+
+## 데이터베이스 모델
+
+JPA entity와 H2 schema는 아래 테이블 모델을 기준으로 구성한다.
+
+### `products`
+
+| 컬럼 | 타입 | 제약 | 설명 |
+| --- | --- | --- | --- |
+| `id` | BIGINT | PK, auto increment | 상품 식별자 |
+| `name` | VARCHAR(100) | NOT NULL | 상품명 |
+| `price` | BIGINT | NOT NULL, 0 이상 | 상품 현재 가격 |
+| `stock_quantity` | INT | NOT NULL, 0 이상 | 현재 재고 수량 |
+| `category` | VARCHAR(50) | NOT NULL | 상품 카테고리 enum |
+| `created_at` | TIMESTAMP | NOT NULL | 생성 일시 |
+| `updated_at` | TIMESTAMP | NOT NULL | 수정 일시 |
+
+### `orders`
+
+| 컬럼 | 타입 | 제약 | 설명 |
+| --- | --- | --- | --- |
+| `id` | BIGINT | PK, auto increment | 주문 식별자 |
+| `status` | VARCHAR(30) | NOT NULL | 주문 상태 enum |
+| `created_at` | TIMESTAMP | NOT NULL | 생성 일시 |
+| `updated_at` | TIMESTAMP | NOT NULL | 수정 일시 |
+
+### `order_items`
+
+| 컬럼 | 타입 | 제약 | 설명 |
+| --- | --- | --- | --- |
+| `id` | BIGINT | PK, auto increment | 주문 항목 식별자 |
+| `order_id` | BIGINT | FK, NOT NULL | 주문 참조 |
+| `product_id` | BIGINT | FK, NOT NULL | 상품 참조 |
+| `quantity` | INT | NOT NULL, 1 이상 | 주문 수량 |
+| `order_price` | BIGINT | NOT NULL, 0 이상 | 주문 당시 상품 가격 |
+
+### 연관관계
+
+- `Order`와 `Product`는 직접 다대다로 매핑하지 않고 `OrderItem`으로 연결한다.
+- `Order`는 `OrderItem`을 `@OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)`로 가진다.
+- `OrderItem`은 `Order`와 `Product`를 각각 `@ManyToOne(fetch = FetchType.LAZY)`로 참조한다.
+- `Product`는 주문 목록을 직접 컬렉션으로 들고 있지 않는다. 상품 관점 주문 조회가 필요하면 repository 조회로 해결한다.
+- API 응답에서는 entity를 직접 반환하지 않고 dto로 변환한다.
+
+### 제약과 인덱스
+
+- `products.stock_quantity`와 `products.price`는 음수가 될 수 없다.
+- `order_items.quantity`는 1 이상이어야 한다.
+- `orders.status`에는 주문 상태별 조회를 위한 인덱스를 둔다.
+- `orders.created_at`에는 기간별 조회와 기본 목록 정렬을 위한 인덱스를 둔다.
+- 상태와 기간을 함께 조회하는 경로가 핵심 조회가 되면 `(status, created_at)` 복합 인덱스를 검토한다.
+- `order_items.order_id`에는 주문 상세 조회를 위한 인덱스를 둔다.
+- `order_items.product_id`에는 상품별 주문 항목 추적이 필요할 경우를 대비해 인덱스를 둔다.
 
 ## 의존성 원칙
 
@@ -142,6 +209,8 @@ COMPLETED -> CANCELED
 ## 조회 전략
 
 - 상품 목록, 카테고리별 상품 목록, 주문 상태별 조회, 기간별 조회는 페이징을 기본으로 한다.
+- 주문 목록 조회는 `status`, `from`, `to`, `page`, `size` 조건을 함께 사용할 수 있다.
+- `from`과 `to`는 ISO local date-time 형식으로 받으며, `createdAt >= from`, `createdAt <= to` 기준으로 포함 조회한다.
 - 조건 조합이 필요한 조회는 QueryDSL을 사용한다.
 - 주문 상세 조회에서 `OrderItem`, `Product` 접근 시 N+1 문제가 생기지 않도록 fetch join 또는 EntityGraph를 검토한다.
 
@@ -150,6 +219,10 @@ COMPLETED -> CANCELED
 - 상품 등록, 수정은 service 메서드 단위 트랜잭션으로 처리한다.
 - 주문 생성은 주문과 주문 항목 저장을 하나의 트랜잭션으로 처리한다.
 - 주문 상태 변경은 상태 변경과 재고 변경을 하나의 트랜잭션으로 처리한다.
+- 주문 상태 변경 API는 대상 주문을 비관적 쓰기 락으로 조회한 뒤 상태 전이 가능 여부를 검증한다.
 - 주문 완료 처리 시 재고 차감 대상 상품 row에 비관적 락을 적용한다.
+- 완료 주문 취소처럼 재고 복구가 필요한 상태 전이에서도 상품 row에 비관적 락을 적용한다.
+- 재고 변경이 필요한 상태 전이에서는 주문 row 락을 획득한 뒤, 주문 항목의 상품 ID를 정렬해 상품 row 비관적 락을 획득한다.
+- 처리 순서는 `주문 row lock -> 상품 row lock -> 상태 전이 검증 -> 재고 검증/변경 -> 주문 상태 변경`으로 한다.
 - 재고 검증, 재고 차감, 주문 상태 변경은 같은 트랜잭션 안에서 수행한다.
 - 여러 상품을 동시에 차감할 때는 상품 ID 기준으로 정렬해 락 획득 순서를 일정하게 유지한다.
