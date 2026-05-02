@@ -2,10 +2,10 @@
 
 ## Current State
 
-- Task Status: `active`
-- Current Phase: `Phase 1`
-- Current Gate: `plan definition`
-- Last Approved Phase: `없음`
+- Task Status: `completed`
+- Current Phase: `Phase 5`
+- Current Gate: `close-out complete`
+- Last Approved Phase: `Phase 5`
 
 ## Allowed Write Set
 
@@ -14,6 +14,8 @@
 - `$TASK/plan.md`
 - `$TASK/implementation_notes.md`
 - `$TASK/phase_status.md`
+- `src/main/java/com/example/ordersystem/product/**/*`
+- `src/test/java/com/example/ordersystem/product/**/*`
 
 ## Locked Paths
 
@@ -26,7 +28,7 @@
 
 ## Next Action
 
-- `plan.md` 작성이 완료되었으므로, 현재 gate를 `plan definition`으로 변경하고 전체 Phase 1 감사를 준비한다.
+- 모든 구현 및 검증이 완료되었으므로 Task를 종료한다.
 
 ## Cleanup
 
