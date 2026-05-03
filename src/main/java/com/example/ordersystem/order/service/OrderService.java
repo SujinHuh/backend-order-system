@@ -1,7 +1,10 @@
 package com.example.ordersystem.order.service;
 
+import com.example.ordersystem.order.controller.dto.OrderResponse;
+import com.example.ordersystem.global.error.exception.EntityNotFoundException;
 import com.example.ordersystem.order.domain.Order;
 import com.example.ordersystem.order.domain.OrderRepository;
+import com.example.ordersystem.order.domain.OrderStatus;
 import com.example.ordersystem.product.domain.Product;
 import com.example.ordersystem.product.service.ProductService;
 import lombok.AllArgsConstructor;
@@ -22,7 +25,7 @@ public class OrderService {
     private final ProductService productService;
 
     @Transactional
-    public Order createOrder(List<OrderItemRequest> itemRequests) {
+    public OrderResponse createOrder(List<OrderItemRequest> itemRequests) {
         if (itemRequests == null || itemRequests.isEmpty()) {
             throw new com.example.ordersystem.global.error.exception.InvalidValueException("Order items cannot be empty");
         }
@@ -33,7 +36,22 @@ public class OrderService {
             order.addOrderItem(product, itemRequest.getQuantity());
         }
 
-        return orderRepository.save(order);
+        Order savedOrder = orderRepository.save(order);
+        return OrderResponse.from(savedOrder);
+    }
+
+    @Transactional
+    public OrderResponse updateStatus(Long id, OrderStatus targetStatus) {
+        Order order = orderRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Order not found with id: " + id));
+        order.changeStatus(targetStatus);
+        return OrderResponse.from(order);
+    }
+
+    public OrderResponse getOrder(Long id) {
+        Order order = orderRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Order not found with id: " + id));
+        return OrderResponse.from(order);
     }
 
     @Getter

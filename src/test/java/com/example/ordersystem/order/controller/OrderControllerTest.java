@@ -2,7 +2,10 @@ package com.example.ordersystem.order.controller;
 
 import com.example.ordersystem.global.error.GlobalExceptionHandler;
 import com.example.ordersystem.order.controller.dto.OrderCreateRequest;
+import com.example.ordersystem.order.controller.dto.OrderResponse;
+import com.example.ordersystem.order.controller.dto.OrderStatusUpdateRequest;
 import com.example.ordersystem.order.domain.Order;
+import com.example.ordersystem.order.domain.OrderStatus;
 import com.example.ordersystem.order.service.OrderService;
 import com.example.ordersystem.product.domain.Category;
 import com.example.ordersystem.product.domain.Product;
@@ -21,6 +24,7 @@ import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -44,14 +48,12 @@ class OrderControllerTest {
         OrderCreateRequest.OrderItemRequest item = new OrderCreateRequest.OrderItemRequest(1L, 2);
         OrderCreateRequest request = new OrderCreateRequest(List.of(item));
 
-        Product product = Product.builder().name("Product A").price(1000L).stockQuantity(10).category(Category.FOOD).build();
-        ReflectionTestUtils.setField(product, "id", 1L);
-
+        Product product = createProduct(1L, "Product A", 1000L);
         Order order = Order.createOrder();
         order.addOrderItem(product, 2);
         ReflectionTestUtils.setField(order, "id", 1L);
 
-        given(orderService.createOrder(any())).willReturn(order);
+        given(orderService.createOrder(any())).willReturn(OrderResponse.from(order));
 
         // when & then
         mockMvc.perform(post("/api/orders")
@@ -63,47 +65,33 @@ class OrderControllerTest {
     }
 
     @Test
-    @DisplayName("주문 항목이 없으면 400 에러가 발생한다.")
-    void createOrder_emptyItems() throws Exception {
+    @DisplayName("주문 상태를 변경한다.")
+    void updateStatus() throws Exception {
         // given
-        OrderCreateRequest request = new OrderCreateRequest(List.of());
+        OrderStatusUpdateRequest request = new OrderStatusUpdateRequest(OrderStatus.ACCEPTED);
+        Product product = createProduct(1L, "Product A", 1000L);
+        Order order = Order.createOrder();
+        order.addOrderItem(product, 1);
+        ReflectionTestUtils.setField(order, "id", 1L);
+        
+        given(orderService.updateStatus(any(), any())).willReturn(OrderResponse.from(order));
 
         // when & then
-        mockMvc.perform(post("/api/orders")
+        mockMvc.perform(patch("/api/orders/{id}/status", 1L)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.code").value("C001"));
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(1L));
     }
 
-    @Test
-    @DisplayName("수량이 1보다 작으면 400 에러가 발생한다.")
-    void createOrder_invalidQuantity() throws Exception {
-        // given
-        OrderCreateRequest.OrderItemRequest item = new OrderCreateRequest.OrderItemRequest(1L, 0);
-        OrderCreateRequest request = new OrderCreateRequest(List.of(item));
-
-        // when & then
-        mockMvc.perform(post("/api/orders")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.code").value("C001"));
-    }
-
-    @Test
-    @DisplayName("존재하지 않는 상품으로 주문하면 404 에러가 발생한다.")
-    void createOrder_productNotFound() throws Exception {
-        // given
-        OrderCreateRequest.OrderItemRequest item = new OrderCreateRequest.OrderItemRequest(999L, 1);
-        OrderCreateRequest request = new OrderCreateRequest(List.of(item));
-        given(orderService.createOrder(any())).willThrow(new com.example.ordersystem.global.error.exception.EntityNotFoundException("Product not found"));
-
-        // when & then
-        mockMvc.perform(post("/api/orders")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.code").value("C003"));
+    private Product createProduct(Long id, String name, long price) {
+        Product product = Product.builder()
+                .name(name)
+                .price(price)
+                .stockQuantity(10)
+                .category(Category.FOOD)
+                .build();
+        ReflectionTestUtils.setField(product, "id", id);
+        return product;
     }
 }

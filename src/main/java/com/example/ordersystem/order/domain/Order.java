@@ -1,5 +1,7 @@
 package com.example.ordersystem.order.domain;
 
+import com.example.ordersystem.global.error.ErrorCode;
+import com.example.ordersystem.global.error.exception.BusinessException;
 import com.example.ordersystem.product.domain.Product;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
@@ -50,6 +52,41 @@ public class Order {
     public void addOrderItem(Product product, int quantity) {
         OrderItem orderItem = OrderItem.createOrderItem(this, product, quantity);
         this.orderItems.add(orderItem);
+    }
+
+    public void changeStatus(OrderStatus targetStatus) {
+        validateTransition(targetStatus);
+
+        if (targetStatus == OrderStatus.COMPLETED) {
+            orderItems.forEach(OrderItem::deductStock);
+        }
+
+        if (targetStatus == OrderStatus.CANCELED && this.status == OrderStatus.COMPLETED) {
+            orderItems.forEach(OrderItem::restoreStock);
+        }
+
+        this.status = targetStatus;
+    }
+
+    private void validateTransition(OrderStatus targetStatus) {
+        if (this.status == targetStatus) {
+            throw new BusinessException("Same status transition is not allowed", ErrorCode.INVALID_INPUT_VALUE);
+        }
+
+        if (this.status == OrderStatus.CANCELED) {
+            throw new BusinessException("Cannot change status from CANCELED", ErrorCode.INVALID_INPUT_VALUE);
+        }
+
+        boolean isValid = switch (this.status) {
+            case PENDING -> targetStatus == OrderStatus.ACCEPTED || targetStatus == OrderStatus.CANCELED;
+            case ACCEPTED -> targetStatus == OrderStatus.COMPLETED || targetStatus == OrderStatus.CANCELED;
+            case COMPLETED -> targetStatus == OrderStatus.CANCELED;
+            default -> false;
+        };
+
+        if (!isValid) {
+            throw new BusinessException("Invalid status transition: " + this.status + " -> " + targetStatus, ErrorCode.INVALID_INPUT_VALUE);
+        }
     }
 
     public long getTotalAmount() {
