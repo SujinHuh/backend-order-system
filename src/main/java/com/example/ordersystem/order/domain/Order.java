@@ -68,6 +68,19 @@ public class Order {
         this.status = targetStatus;
     }
 
+    public boolean requiresStockLock(OrderStatus targetStatus) {
+        return (this.status == OrderStatus.ACCEPTED && targetStatus == OrderStatus.COMPLETED)
+                || (this.status == OrderStatus.COMPLETED && targetStatus == OrderStatus.CANCELED);
+    }
+
+    public List<Long> getOrderItemProductIds() {
+        return orderItems.stream()
+                .map(OrderItem::getProductId)
+                .distinct()
+                .sorted()
+                .toList();
+    }
+
     private void validateTransition(OrderStatus targetStatus) {
         if (this.status == targetStatus) {
             throw new BusinessException("Same status transition is not allowed", ErrorCode.INVALID_INPUT_VALUE);
