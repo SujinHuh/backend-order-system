@@ -47,6 +47,14 @@ public class OrderItem {
         return orderPrice * quantity;
     }
 
+    public void deductStock() {
+        product.removeStock(quantity);
+    }
+
+    public void restoreStock() {
+        product.addStock(quantity);
+    }
+
     private void validateQuantity(int quantity) {
         if (quantity < 1) {
             throw new InvalidValueException(String.valueOf(quantity));

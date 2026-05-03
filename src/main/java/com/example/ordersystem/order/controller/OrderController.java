@@ -2,7 +2,7 @@ package com.example.ordersystem.order.controller;
 
 import com.example.ordersystem.order.controller.dto.OrderCreateRequest;
 import com.example.ordersystem.order.controller.dto.OrderResponse;
-import com.example.ordersystem.order.domain.Order;
+import com.example.ordersystem.order.controller.dto.OrderStatusUpdateRequest;
 import com.example.ordersystem.order.service.OrderService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -21,11 +21,17 @@ public class OrderController {
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public OrderResponse createOrder(@RequestBody @Valid OrderCreateRequest request) {
-        Order order = orderService.createOrder(
+        return orderService.createOrder(
                 request.getItems().stream()
                         .map(item -> new OrderService.OrderItemRequest(item.getProductId(), item.getQuantity()))
                         .collect(Collectors.toList())
         );
-        return OrderResponse.from(order);
+    }
+
+    @PatchMapping("/{id}/status")
+    public OrderResponse updateStatus(
+            @PathVariable Long id,
+            @RequestBody @Valid OrderStatusUpdateRequest request) {
+        return orderService.updateStatus(id, request.getStatus());
     }
 }

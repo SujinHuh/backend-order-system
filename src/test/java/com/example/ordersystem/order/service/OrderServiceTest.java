@@ -1,8 +1,10 @@
 package com.example.ordersystem.order.service;
 
+import com.example.ordersystem.order.controller.dto.OrderResponse;
 import com.example.ordersystem.global.error.exception.EntityNotFoundException;
 import com.example.ordersystem.order.domain.Order;
 import com.example.ordersystem.order.domain.OrderRepository;
+import com.example.ordersystem.order.domain.OrderStatus;
 import com.example.ordersystem.product.domain.Category;
 import com.example.ordersystem.product.domain.Product;
 import com.example.ordersystem.product.service.ProductService;
@@ -15,6 +17,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.List;
+import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -46,6 +49,8 @@ class OrderServiceTest {
         given(productService.getProduct(2L)).willReturn(product2);
 
         Order order = Order.createOrder();
+        order.addOrderItem(product1, 2);
+        order.addOrderItem(product2, 1);
         ReflectionTestUtils.setField(order, "id", 1L);
         given(orderRepository.save(any(Order.class))).willReturn(order);
 
@@ -55,7 +60,7 @@ class OrderServiceTest {
         );
 
         // when
-        Order result = orderService.createOrder(items);
+        OrderResponse result = orderService.createOrder(items);
 
         // then
         assertThat(result.getId()).isEqualTo(1L);
@@ -72,6 +77,34 @@ class OrderServiceTest {
 
         // when & then
         assertThatThrownBy(() -> orderService.createOrder(items))
+                .isInstanceOf(EntityNotFoundException.class);
+    }
+
+    @Test
+    @DisplayName("주문 상태를 변경한다.")
+    void updateStatus() {
+        // given
+        Product product = createProduct(1L, "Product", 1000L);
+        Order order = Order.createOrder();
+        order.addOrderItem(product, 1);
+        given(orderRepository.findById(1L)).willReturn(Optional.of(order));
+
+        // when
+        OrderResponse response = orderService.updateStatus(1L, OrderStatus.ACCEPTED);
+
+        // then
+        assertThat(response.getStatus()).isEqualTo(OrderStatus.ACCEPTED);
+        verify(orderRepository).findById(1L);
+    }
+
+    @Test
+    @DisplayName("존재하지 않는 주문의 상태를 변경하면 예외가 발생한다.")
+    void updateStatus_orderNotFound() {
+        // given
+        given(orderRepository.findById(999L)).willReturn(Optional.empty());
+
+        // when & then
+        assertThatThrownBy(() -> orderService.updateStatus(999L, OrderStatus.ACCEPTED))
                 .isInstanceOf(EntityNotFoundException.class);
     }
 
