@@ -31,7 +31,7 @@
 
 ## Next Action
 
-- `requirements.md`를 작성 또는 보완한 뒤 현재 gate를 다시 평가한다.
+- Task 종료. `main` 반영 및 close-out 완료.
 
 ## Cleanup
 

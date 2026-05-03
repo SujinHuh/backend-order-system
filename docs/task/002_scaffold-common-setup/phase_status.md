@@ -5,7 +5,7 @@
 - Task Status: `completed`
 - Current Phase: `Phase 5`
 - Current Gate: `close-out complete`
-- Last Approved Phase: `Phase 4`
+- Last Approved Phase: `Phase 5`
 
 ## Allowed Write Set
 
@@ -44,7 +44,7 @@
 
 ## Next Action
 
-- 변경 파일을 커밋한다.
+- Task 종료. `main` 반영 및 close-out 완료.
 
 ## Cleanup
 

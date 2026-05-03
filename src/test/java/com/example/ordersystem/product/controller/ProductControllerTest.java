@@ -131,6 +131,36 @@ class ProductControllerTest {
                 .andExpect(jsonPath("$.errors").isArray());
     }
 
+    @Test
+    @DisplayName("상품 등록 시 재고 수량이 누락되면 400 에러가 발생한다.")
+    void createProduct_missingStockQuantity() throws Exception {
+        // given
+        ProductCreateRequest request = new ProductCreateRequest("Product A", 1000L, null, Category.FOOD);
+
+        // when & then
+        mockMvc.perform(post("/api/products")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("C001"))
+                .andExpect(jsonPath("$.errors").isArray());
+    }
+
+    @Test
+    @DisplayName("상품 수정 시 재고 수량이 누락되면 400 에러가 발생한다.")
+    void updateProduct_missingStockQuantity() throws Exception {
+        // given
+        ProductUpdateRequest request = new ProductUpdateRequest("Updated Product", 2000L, null, Category.FASHION);
+
+        // when & then
+        mockMvc.perform(put("/api/products/{id}", 1L)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("C001"))
+                .andExpect(jsonPath("$.errors").isArray());
+    }
+
     private Product createProduct(Long id, String name, long price, int stockQuantity) {
         Product product = Product.builder()
                 .name(name)

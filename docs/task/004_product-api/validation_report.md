@@ -21,6 +21,16 @@
 ## 특이 사항 및 잔여 리스크
 - `ProductResponse`에 생성/수정일시(`createdAt`, `updatedAt`)를 포함하여 응답하도록 구현됨.
 - DTO의 `price` 필드를 `Long` 래퍼 타입으로 설계하여 정교한 Validation을 보장함.
+- 2026-05-03 감사 follow-up에서 `stockQuantity`도 `Integer` 래퍼 타입 및 `@NotNull`로 보강하여 누락 입력 검증을 보장함.
+- 2026-05-03 감사 follow-up에서 `ProductServiceIntegrationTest`를 추가하여 실제 H2/JPA 기반 상품 저장, 조회, 수정, auditing 값 반영을 검증함.
+
+## 감사 Follow-up 검증
+- `./mvnw test`
+  - 실행 시각: 2026-05-03 21:47 KST
+  - 결과: **성공 (48/48 tests passed)**
+  - 보강 항목:
+    - `ProductControllerTest`: 상품 등록/수정 시 `stockQuantity` 누락 400 응답 검증 추가
+    - `ProductServiceIntegrationTest`: 실제 DB 연동 상품 저장/조회/수정 검증 추가
 
 ## 후속 조치 필요 사항
 - 이후 `Order` 도메인 구현 시 `Product.removeStock()` 기능을 연동하여 주문 로직 완성 예정.

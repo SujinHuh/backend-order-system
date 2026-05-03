@@ -5,7 +5,7 @@
 - Task Status: `completed`
 - Current Phase: `Phase 5`
 - Current Gate: `closed`
-- Last Approved Phase: `Phase 4`
+- Last Approved Phase: `Phase 5`
 
 ## Allowed Write Set
 
