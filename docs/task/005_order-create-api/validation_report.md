@@ -23,5 +23,14 @@
 - 현재 주문 생성 단계에서는 재고를 체크하지 않으므로, 실제 재고 차감 및 부족 예외 처리는 Task 007에서 구현 예정.
 - `OrderResponse`에 주문 상세 내역과 총액 정보를 포함하여 일관된 API 스펙 제공.
 
+## 감사 Follow-up 검증
+- `./mvnw test`
+  - 실행 시각: 2026-05-03 21:47 KST
+  - 결과: **성공 (48/48 tests passed)**
+  - 보강 항목:
+    - `OrderControllerTest`: 주문 항목 빈 배열 400 응답 검증 추가
+    - `OrderControllerTest`: 주문 수량 0 이하 400 응답 검증 추가
+    - `OrderControllerTest`: 상품 미존재 주문 생성 404 응답 검증 추가
+
 ## 후속 조치 필요 사항
 - Task 006에서 진행할 주문 상태 변경 기능과 연동 준비.

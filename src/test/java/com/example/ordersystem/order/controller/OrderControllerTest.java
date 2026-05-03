@@ -1,6 +1,9 @@
 package com.example.ordersystem.order.controller;
 
 import com.example.ordersystem.global.error.GlobalExceptionHandler;
+import com.example.ordersystem.global.error.ErrorCode;
+import com.example.ordersystem.global.error.exception.BusinessException;
+import com.example.ordersystem.global.error.exception.EntityNotFoundException;
 import com.example.ordersystem.order.controller.dto.OrderCreateRequest;
 import com.example.ordersystem.order.controller.dto.OrderResponse;
 import com.example.ordersystem.order.controller.dto.OrderStatusUpdateRequest;
@@ -24,6 +27,7 @@ import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.willThrow;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
@@ -82,6 +86,70 @@ class OrderControllerTest {
                 .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(1L));
+    }
+
+    @Test
+    @DisplayName("주문 항목이 비어 있으면 400 에러가 발생한다.")
+    void createOrder_emptyItems() throws Exception {
+        // given
+        OrderCreateRequest request = new OrderCreateRequest(List.of());
+
+        // when & then
+        mockMvc.perform(post("/api/orders")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("C001"))
+                .andExpect(jsonPath("$.errors").isArray());
+    }
+
+    @Test
+    @DisplayName("주문 수량이 1보다 작으면 400 에러가 발생한다.")
+    void createOrder_invalidQuantity() throws Exception {
+        // given
+        OrderCreateRequest.OrderItemRequest item = new OrderCreateRequest.OrderItemRequest(1L, 0);
+        OrderCreateRequest request = new OrderCreateRequest(List.of(item));
+
+        // when & then
+        mockMvc.perform(post("/api/orders")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("C001"))
+                .andExpect(jsonPath("$.errors").isArray());
+    }
+
+    @Test
+    @DisplayName("존재하지 않는 상품으로 주문하면 404 에러가 발생한다.")
+    void createOrder_productNotFound() throws Exception {
+        // given
+        OrderCreateRequest.OrderItemRequest item = new OrderCreateRequest.OrderItemRequest(999L, 1);
+        OrderCreateRequest request = new OrderCreateRequest(List.of(item));
+        given(orderService.createOrder(any()))
+                .willThrow(new EntityNotFoundException("Product not found with id: 999"));
+
+        // when & then
+        mockMvc.perform(post("/api/orders")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("C003"));
+    }
+
+    @Test
+    @DisplayName("잘못된 주문 상태 전이면 400 에러가 발생한다.")
+    void updateStatus_invalidTransition() throws Exception {
+        // given
+        OrderStatusUpdateRequest request = new OrderStatusUpdateRequest(OrderStatus.COMPLETED);
+        willThrow(new BusinessException("Invalid status transition", ErrorCode.INVALID_INPUT_VALUE))
+                .given(orderService).updateStatus(any(), any());
+
+        // when & then
+        mockMvc.perform(patch("/api/orders/{id}/status", 1L)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("C001"));
     }
 
     private Product createProduct(Long id, String name, long price) {

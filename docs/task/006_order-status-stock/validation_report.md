@@ -21,5 +21,12 @@
 ## 특이 사항 및 잔여 리스크
 - 통합 테스트(`OrderStockIntegrationTest`)에서 주문 생성부터 완료 후 취소까지의 전체 라이프사이클을 통해 재고 정합성을 완벽히 검증함.
 
+## 감사 Follow-up 검증
+- `./mvnw test`
+  - 실행 시각: 2026-05-03 21:47 KST
+  - 결과: **성공 (48/48 tests passed)**
+  - 보강 항목:
+    - `OrderControllerTest`: 잘못된 주문 상태 전이 400 응답 검증 추가
+
 ## 후속 조치 필요 사항
-- Task 007에서 진행할 동시성 제어(`Pessimistic Lock`) 구현 시, 본 태스크에서 구현한 `OrderService.updateStatus` 메서드에 락 적용 필요.
+- Task 007에서 동시성 제어(`Pessimistic Lock`) 구현 및 `OrderService.updateStatus` 락 적용 완료.

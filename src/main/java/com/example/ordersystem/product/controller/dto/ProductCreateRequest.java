@@ -21,8 +21,9 @@ public class ProductCreateRequest {
     @Min(value = 0, message = "Price must be 0 or greater")
     private Long price;
 
+    @NotNull(message = "Stock quantity is required")
     @Min(value = 0, message = "Stock quantity must be 0 or greater")
-    private int stockQuantity;
+    private Integer stockQuantity;
 
     @NotNull(message = "Category is required")
     private Category category;
