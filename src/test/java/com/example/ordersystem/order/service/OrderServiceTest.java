@@ -7,6 +7,7 @@ import com.example.ordersystem.order.domain.OrderRepository;
 import com.example.ordersystem.order.domain.OrderStatus;
 import com.example.ordersystem.product.domain.Category;
 import com.example.ordersystem.product.domain.Product;
+import com.example.ordersystem.product.domain.ProductRepository;
 import com.example.ordersystem.product.service.ProductService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -34,6 +35,9 @@ class OrderServiceTest {
 
     @Mock
     private ProductService productService;
+
+    @Mock
+    private ProductRepository productRepository;
 
     @InjectMocks
     private OrderService orderService;
@@ -87,21 +91,21 @@ class OrderServiceTest {
         Product product = createProduct(1L, "Product", 1000L);
         Order order = Order.createOrder();
         order.addOrderItem(product, 1);
-        given(orderRepository.findById(1L)).willReturn(Optional.of(order));
+        given(orderRepository.findByIdForUpdate(1L)).willReturn(Optional.of(order));
 
         // when
         OrderResponse response = orderService.updateStatus(1L, OrderStatus.ACCEPTED);
 
         // then
         assertThat(response.getStatus()).isEqualTo(OrderStatus.ACCEPTED);
-        verify(orderRepository).findById(1L);
+        verify(orderRepository).findByIdForUpdate(1L);
     }
 
     @Test
     @DisplayName("존재하지 않는 주문의 상태를 변경하면 예외가 발생한다.")
     void updateStatus_orderNotFound() {
         // given
-        given(orderRepository.findById(999L)).willReturn(Optional.empty());
+        given(orderRepository.findByIdForUpdate(999L)).willReturn(Optional.empty());
 
         // when & then
         assertThatThrownBy(() -> orderService.updateStatus(999L, OrderStatus.ACCEPTED))

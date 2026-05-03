@@ -55,6 +55,10 @@ public class OrderItem {
         product.addStock(quantity);
     }
 
+    public Long getProductId() {
+        return product.getId();
+    }
+
     private void validateQuantity(int quantity) {
         if (quantity < 1) {
             throw new InvalidValueException(String.valueOf(quantity));

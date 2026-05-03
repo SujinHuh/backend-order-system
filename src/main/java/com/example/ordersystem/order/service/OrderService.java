@@ -6,6 +6,7 @@ import com.example.ordersystem.order.domain.Order;
 import com.example.ordersystem.order.domain.OrderRepository;
 import com.example.ordersystem.order.domain.OrderStatus;
 import com.example.ordersystem.product.domain.Product;
+import com.example.ordersystem.product.domain.ProductRepository;
 import com.example.ordersystem.product.service.ProductService;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -23,6 +24,7 @@ public class OrderService {
 
     private final OrderRepository orderRepository;
     private final ProductService productService;
+    private final ProductRepository productRepository;
 
     @Transactional
     public OrderResponse createOrder(List<OrderItemRequest> itemRequests) {
@@ -42,8 +44,11 @@ public class OrderService {
 
     @Transactional
     public OrderResponse updateStatus(Long id, OrderStatus targetStatus) {
-        Order order = orderRepository.findById(id)
+        Order order = orderRepository.findByIdForUpdate(id)
                 .orElseThrow(() -> new EntityNotFoundException("Order not found with id: " + id));
+        if (order.requiresStockLock(targetStatus)) {
+            lockProducts(order.getOrderItemProductIds());
+        }
         order.changeStatus(targetStatus);
         return OrderResponse.from(order);
     }
@@ -52,6 +57,13 @@ public class OrderService {
         Order order = orderRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Order not found with id: " + id));
         return OrderResponse.from(order);
+    }
+
+    private void lockProducts(List<Long> productIds) {
+        List<Product> products = productRepository.findAllByIdInOrderByIdAsc(productIds);
+        if (products.size() != productIds.size()) {
+            throw new EntityNotFoundException("Product not found in order items");
+        }
     }
 
     @Getter
