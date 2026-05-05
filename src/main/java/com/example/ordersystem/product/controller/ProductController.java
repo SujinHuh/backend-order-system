@@ -3,6 +3,7 @@ package com.example.ordersystem.product.controller;
 import com.example.ordersystem.product.controller.dto.ProductCreateRequest;
 import com.example.ordersystem.product.controller.dto.ProductResponse;
 import com.example.ordersystem.product.controller.dto.ProductUpdateRequest;
+import com.example.ordersystem.product.domain.Category;
 import com.example.ordersystem.product.domain.Product;
 import com.example.ordersystem.product.service.ProductService;
 import jakarta.validation.Valid;
@@ -55,8 +56,9 @@ public class ProductController {
 
     @GetMapping
     public Page<ProductResponse> getProducts(
+            @RequestParam(required = false) Category category,
             @PageableDefault(size = 10, sort = "id", direction = Sort.Direction.DESC) Pageable pageable) {
-        Page<Product> products = productService.getProducts(pageable);
+        Page<Product> products = productService.getProducts(category, pageable);
         return products.map(ProductResponse::from);
     }
 }

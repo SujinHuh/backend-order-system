@@ -10,6 +10,7 @@ import com.example.ordersystem.global.error.GlobalExceptionHandler;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
@@ -23,8 +24,11 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.List;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.verify;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -94,7 +98,7 @@ class ProductControllerTest {
         // given
         Product product = createProduct(1L, "Product A", 1000L, 10);
         Page<Product> page = new PageImpl<>(List.of(product));
-        given(productService.getProducts(any(Pageable.class))).willReturn(page);
+        given(productService.getProducts(any(), any(Pageable.class))).willReturn(page);
 
         // when & then
         mockMvc.perform(get("/api/products")
@@ -102,6 +106,29 @@ class ProductControllerTest {
                 .param("size", "10"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content[0].name").value("Product A"));
+    }
+
+    @Test
+    @DisplayName("카테고리 조건으로 상품 목록을 페이징 조회한다.")
+    void getProductsByCategory() throws Exception {
+        // given
+        Product product = createProduct(1L, "Food Product", 1000L, 10);
+        Page<Product> page = new PageImpl<>(List.of(product));
+        given(productService.getProducts(any(), any(Pageable.class))).willReturn(page);
+
+        // when & then
+        mockMvc.perform(get("/api/products")
+                .param("category", "FOOD")
+                .param("page", "0")
+                .param("size", "10"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content[0].category").value("FOOD"))
+                .andExpect(jsonPath("$.content[0].name").value("Food Product"));
+
+        ArgumentCaptor<Pageable> pageableCaptor = ArgumentCaptor.forClass(Pageable.class);
+        verify(productService).getProducts(eq(Category.FOOD), pageableCaptor.capture());
+        assertThat(pageableCaptor.getValue().getPageNumber()).isZero();
+        assertThat(pageableCaptor.getValue().getPageSize()).isEqualTo(10);
     }
 
     @Test

@@ -15,19 +15,27 @@ import com.example.ordersystem.product.domain.Product;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.MediaType;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.willThrow;
+import static org.mockito.Mockito.verify;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
@@ -150,6 +158,63 @@ class OrderControllerTest {
                 .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("C001"));
+    }
+
+    @Test
+    @DisplayName("주문을 단건 조회한다.")
+    void getOrder() throws Exception {
+        // given
+        Product product = createProduct(1L, "Product A", 1000L);
+        Order order = Order.createOrder();
+        order.addOrderItem(product, 2);
+        ReflectionTestUtils.setField(order, "id", 1L);
+        given(orderService.getOrder(1L)).willReturn(OrderResponse.from(order));
+
+        // when & then
+        mockMvc.perform(get("/api/orders/{id}", 1L))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(1L))
+                .andExpect(jsonPath("$.orderItems[0].productName").value("Product A"))
+                .andExpect(jsonPath("$.totalAmount").value(2000L));
+    }
+
+    @Test
+    @DisplayName("주문 목록을 상태와 기간 조건으로 페이징 조회한다.")
+    void getOrders() throws Exception {
+        // given
+        Product product = createProduct(1L, "Product A", 1000L);
+        Order order = Order.createOrder();
+        order.addOrderItem(product, 1);
+        ReflectionTestUtils.setField(order, "id", 1L);
+        Page<OrderResponse> page = new PageImpl<>(List.of(OrderResponse.from(order)));
+        given(orderService.getOrders(any(), any(), any(), any(Pageable.class))).willReturn(page);
+
+        // when & then
+        mockMvc.perform(get("/api/orders")
+                .param("status", "PENDING")
+                .param("from", "2026-01-01T00:00:00")
+                .param("to", "2026-01-31T23:59:00")
+                .param("page", "0")
+                .param("size", "10"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content[0].id").value(1L))
+                .andExpect(jsonPath("$.content[0].orderItems[0].productName").value("Product A"));
+
+        ArgumentCaptor<OrderStatus> statusCaptor = ArgumentCaptor.forClass(OrderStatus.class);
+        ArgumentCaptor<LocalDateTime> fromCaptor = ArgumentCaptor.forClass(LocalDateTime.class);
+        ArgumentCaptor<LocalDateTime> toCaptor = ArgumentCaptor.forClass(LocalDateTime.class);
+        ArgumentCaptor<Pageable> pageableCaptor = ArgumentCaptor.forClass(Pageable.class);
+        verify(orderService).getOrders(
+                statusCaptor.capture(),
+                fromCaptor.capture(),
+                toCaptor.capture(),
+                pageableCaptor.capture()
+        );
+        assertThat(statusCaptor.getValue()).isEqualTo(OrderStatus.PENDING);
+        assertThat(fromCaptor.getValue()).isEqualTo(LocalDateTime.of(2026, 1, 1, 0, 0));
+        assertThat(toCaptor.getValue()).isEqualTo(LocalDateTime.of(2026, 1, 31, 23, 59));
+        assertThat(pageableCaptor.getValue().getPageNumber()).isZero();
+        assertThat(pageableCaptor.getValue().getPageSize()).isEqualTo(10);
     }
 
     private Product createProduct(Long id, String name, long price) {

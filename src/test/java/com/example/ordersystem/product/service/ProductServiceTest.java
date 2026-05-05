@@ -108,12 +108,35 @@ class ProductServiceTest {
                 .build();
         ReflectionTestUtils.setField(product, "id", 1L);
         Page<Product> page = new PageImpl<>(List.of(product));
-        given(productRepository.findAll(pageable)).willReturn(page);
+        given(productRepository.search(null, pageable)).willReturn(page);
 
         // when
         Page<Product> result = productService.getProducts(pageable);
 
         // then
         assertThat(result.getContent()).hasSize(1);
+    }
+
+    @Test
+    @DisplayName("카테고리 조건으로 상품 목록을 페이징 조회한다.")
+    void getProductsByCategory() {
+        // given
+        Pageable pageable = PageRequest.of(0, 10);
+        Product product = Product.builder()
+                .name("Product A")
+                .price(1000L)
+                .stockQuantity(10)
+                .category(Category.FOOD)
+                .build();
+        ReflectionTestUtils.setField(product, "id", 1L);
+        Page<Product> page = new PageImpl<>(List.of(product));
+        given(productRepository.search(Category.FOOD, pageable)).willReturn(page);
+
+        // when
+        Page<Product> result = productService.getProducts(Category.FOOD, pageable);
+
+        // then
+        assertThat(result.getContent()).hasSize(1);
+        assertThat(result.getContent().get(0).getCategory()).isEqualTo(Category.FOOD);
     }
 }

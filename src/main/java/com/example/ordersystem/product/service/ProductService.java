@@ -43,6 +43,10 @@ public class ProductService {
     }
 
     public Page<Product> getProducts(Pageable pageable) {
-        return productRepository.findAll(pageable);
+        return getProducts(null, pageable);
+    }
+
+    public Page<Product> getProducts(Category category, Pageable pageable) {
+        return productRepository.search(category, pageable);
     }
 }
