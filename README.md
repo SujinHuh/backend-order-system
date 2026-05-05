@@ -1,331 +1,109 @@
-# 주문 시스템 설계 및 구현
+# 주문 시스템 (Order System)
 
-## 지원자 
+## 지원자
+
 허수진
 
 ## 과제 개요
 
-본 프로젝트는 상품과 주문 도메인을 기반으로 주문 시스템을 설계하고 구현하는 백엔드 과제입니다.
+본 프로젝트는 상품 관리와 주문 처리를 핵심으로 하는 백엔드 시스템입니다. QueryDSL 기반 조건 조회, Fetch Join을 활용한 조회 경로, 비관적 락 기반 재고 정합성 보장, 도메인 규칙 분리를 중심으로 구현했습니다.
 
-핵심 요구사항은 단순 CRUD 구현에 그치지 않고, 주문 상태 변경 과정에서 발생하는 재고 정합성, 트랜잭션 경계, 동시성 문제, 예외 처리, 성능 이슈를 함께 고려하는 것입니다.
+핵심 요구사항은 단순 CRUD 구현에 그치지 않고, 주문 상태 변경 과정에서 발생하는 재고 정합성, 트랜잭션 경계, 동시성 문제, 예외 처리, 조회 경로를 함께 고려하는 것입니다.
 
 ## 기술 스택
 
-- Java 17 이상
-- Spring Boot 3 이상
-- JPA
-- Maven
-- H2 Database
-- QueryDSL
+- **언어 및 프레임워크**: Java 17, Spring Boot 3.3.5
+- **데이터 저장소**: H2 Database (In-Memory)
+- **ORM 및 조회**: Spring Data JPA, QueryDSL 5.1.0
+- **빌드 도구**: Maven
+- **유틸리티**: Lombok
 
-## 주요 도메인
+## 핵심 도메인 모델
 
-### 상품
+### 1. 상품 (Product)
+- **속성**: 상품명, 가격, 재고수량, 카테고리
+- **카테고리**: `FOOD`, `FASHION`, `ELECTRONICS`, `BOOK`, `ETC`
+- **특징**: 재고 수량은 0 미만이 될 수 없으며, 모든 가격은 0 이상이어야 합니다.
 
-상품은 다음 정보를 가집니다.
+### 2. 주문 (Order)
+- **상태 전이**:
+    - `PENDING` (대기) -> `ACCEPTED` (접수)
+    - `ACCEPTED` (접수) -> `COMPLETED` (완료)
+    - `PENDING` / `ACCEPTED` / `COMPLETED` -> `CANCELED` (취소)
+- **재고 정책**:
+    - 주문 생성(`PENDING`) 시점에는 재고를 차감하지 않습니다.
+    - 주문이 **`COMPLETED`** 상태로 전이될 때 실제 재고를 차감합니다.
+    - `COMPLETED` 상태에서 `CANCELED`로 전이될 때 재고를 복구합니다.
+- **제약**: 동일 상태로의 전이나 비정상적인 흐름(취소 후 완료 등)은 금지됩니다.
 
-- 상품명
-- 가격
-- 재고수량
-- 카테고리
-
-상품 카테고리는 초기 지원 enum 값으로 다음을 사용합니다.
-
-- `FOOD`
-- `FASHION`
-- `ELECTRONICS`
-- `BOOK`
-- `ETC`
-
-상품은 등록, 수정, 단건 조회, 목록 조회가 가능해야 하며, 카테고리 기준 조회와 페이징 처리를 지원합니다.
-
-### 주문
-
-주문은 하나 이상의 상품을 포함할 수 있습니다. 주문 상품별 수량을 표현하기 위해 주문과 상품 사이에 주문 항목을 둡니다.
-
-주문 상태는 다음과 같습니다.
-
-- 대기
-- 접수
-- 완료
-- 취소
-
-주문 생성 시 기본 상태는 대기 상태입니다. 주문 상태는 생성 이후 변경할 수 있지만, 비즈니스적으로 올바르지 않은 상태 변경은 허용하지 않습니다.
-
-## 도메인 모델링 방향
-
-예상되는 주요 엔티티는 다음과 같습니다.
-
-- `Product`: 상품 정보와 재고 수량 관리
-- `Order`: 주문 기본 정보와 주문 상태 관리
-- `OrderItem`: 주문에 포함된 상품, 주문 수량, 주문 당시 상품 가격 관리
-- `Category`: 상품 카테고리
-- `OrderStatus`: 주문 상태
-
-`Order`와 `Product`는 직접 다대다 관계로 연결하지 않고, `OrderItem`을 통해 연결합니다. 주문 시점의 상품 가격과 주문 수량을 주문 항목에 남겨 주문 데이터의 의미가 이후 상품 정보 변경에 의해 흔들리지 않도록 설계합니다.
-
-## 데이터베이스 모델 설계
-
-H2 Database와 JPA를 기준으로 다음 테이블 모델을 사용합니다.
-
-### `products`
-
-| 컬럼 | 설명 |
-| --- | --- |
-| `id` | 상품 식별자 |
-| `name` | 상품명 |
-| `price` | 상품 가격, 0 이상 |
-| `stock_quantity` | 재고수량, 0 이상 |
-| `category` | 상품 카테고리 |
-| `created_at` | 생성일시 |
-| `updated_at` | 수정일시 |
-
-### `orders`
-
-| 컬럼 | 설명 |
-| --- | --- |
-| `id` | 주문 식별자 |
-| `status` | 주문 상태 |
-| `created_at` | 생성일시 |
-| `updated_at` | 수정일시 |
-
-### `order_items`
-
-| 컬럼 | 설명 |
-| --- | --- |
-| `id` | 주문 항목 식별자 |
-| `order_id` | 주문 참조 |
-| `product_id` | 상품 참조 |
-| `quantity` | 주문수량, 1 이상 |
-| `order_price` | 주문 당시 상품 가격 |
-
-`Order`는 여러 `OrderItem`을 가지며, `OrderItem`은 하나의 `Product`를 참조합니다. `Product`에는 주문 목록 컬렉션을 두지 않고, 필요한 조회는 repository에서 처리합니다.
-
-## 주문 상태 전이 정책
-
-주문 상태 변경은 명확한 상태 전이 규칙을 기준으로 처리합니다.
-
-기본 정책은 다음과 같이 설계합니다.
-
-```text
-대기 -> 접수
-접수 -> 완료
-대기 -> 취소
-접수 -> 취소
-완료 -> 취소
-```
-
-다음과 같은 상태 변경은 허용하지 않습니다.
-
-```text
-대기 -> 대기
-접수 -> 접수
-완료 -> 완료
-취소 -> 취소
-완료 -> 대기
-완료 -> 접수
-취소 -> 대기
-취소 -> 접수
-취소 -> 완료
-```
-
-현재 상태와 동일한 상태로 변경하는 요청은 허용 상태 전이에 포함하지 않습니다. 동일 상태 변경 요청은 멱등 성공으로 처리하지 않고, 허용되지 않은 주문 상태 변경 예외로 응답합니다.
-
-## 재고 처리 정책
-
-주문이 완료 상태로 변경될 때 주문에 포함된 상품들의 재고를 차감합니다.
-
-재고 차감 시 다음 조건을 검증합니다.
-
-- 주문에 포함된 상품이 존재해야 합니다.
-- 주문 수량은 1 이상이어야 합니다.
-- 상품 재고가 주문 수량보다 적으면 주문 완료 처리는 실패합니다.
-- 재고 차감과 주문 상태 변경은 하나의 트랜잭션 안에서 처리합니다.
-
-주문이 취소될 경우, 이미 차감된 재고가 있다면 주문 항목 수량만큼 재고를 복구합니다.
-
-주문 생성 시점에는 재고를 차감하지 않습니다. 따라서 대기 또는 접수 상태에서 취소되는 주문은 복구할 재고가 없고, 완료 상태에서 취소되는 주문에 대해서만 재고 복구를 수행합니다.
-
-## API 설계 방향
+## 주요 API 명세
 
 ### 상품 API
-
-| 기능 | Method | Endpoint |
-| --- | --- | --- |
-| 상품 등록 | POST | `/api/products` |
-| 상품 수정 | PUT | `/api/products/{productId}` |
-| 상품 단건 조회 | GET | `/api/products/{productId}` |
-| 상품 목록 조회 | GET | `/api/products` |
-| 카테고리 기준 조회 | GET | `/api/products?category={category}` |
-
-상품 목록 조회는 페이징을 지원합니다.
-
-```text
-GET /api/products?page=0&size=20
-```
+- `POST /api/products`: 신규 상품 등록
+- `PUT /api/products/{id}`: 상품 정보 수정
+- `GET /api/products/{id}`: 상품 상세 조회
+- `GET /api/products`: 상품 목록 조회 (카테고리 필터링 및 페이징 지원)
+    - 예: `/api/products?category=FOOD&page=0&size=10`
 
 ### 주문 API
+- `POST /api/orders`: 주문 생성 (초기 상태 `PENDING`)
+- `PATCH /api/orders/{id}/status`: 주문 상태 변경 (상태 전이 및 재고 처리 수반)
+- `GET /api/orders/{id}`: 주문 상세 조회 (주문 항목 및 상품 정보 Fetch Join)
+- `GET /api/orders`: 주문 목록 조회 (상태, 기간 필터링 및 페이징 지원)
+    - **기간 조회 조건**: `from` 및 `to`는 ISO local date-time 형식이며, **경계값을 포함(Inclusive)**하여 조회합니다 (`createdAt >= from AND createdAt <= to`).
+    - 예: `/api/orders?status=COMPLETED&from=2026-05-01T00:00:00&to=2026-05-31T23:59:59`
 
-| 기능 | Method | Endpoint |
-| --- | --- | --- |
-| 주문 생성 | POST | `/api/orders` |
-| 주문 상태 변경 | PATCH | `/api/orders/{orderId}/status` |
-| 주문 단건 조회 | GET | `/api/orders/{orderId}` |
-| 주문 목록 조회 | GET | `/api/orders` |
-| 주문 상태별 조회 | GET | `/api/orders?status={status}` |
-| 기간별 조회 | GET | `/api/orders?from={from}&to={to}` |
+## 기술적 해결 방안
 
-주문 목록 조회는 페이징을 지원합니다. `status`, `from`, `to`, `page`, `size` 조건을 함께 사용할 수 있습니다. `from`과 `to`는 ISO local date-time 형식으로 받으며, `createdAt >= from`, `createdAt <= to` 기준으로 포함 조회합니다.
+### 1. 데이터 정합성 및 동시성 제어
+- **비관적 락(Pessimistic Write Lock)**: 주문 상태 변경 시 대상 주문 row를 비관적 락으로 조회합니다. 재고 변경이 필요한 상태 전이에서는 주문 항목의 상품 row도 비관적 락으로 조회해 동시 재고 수정을 방지합니다.
+- **데드락 방지**: 여러 상품의 락을 획득할 때 **상품 ID 순으로 정렬**하여 락을 획득함으로써 순환 대기 가능성을 낮춥니다.
 
-```text
-GET /api/orders?page=0&size=20&status=COMPLETED&from=2026-05-01T00:00:00&to=2026-05-31T23:59:59
-```
+### 2. 조회 성능 최적화
+- **QueryDSL 활용**: 복잡한 동적 쿼리(주문 상태 + 기간 필터링)를 타입 안정성을 보장하며 구현했습니다.
+- **Fetch Join**: 주문 상세 조회 시 N+1 문제를 방지하기 위해 `OrderItem`과 `Product`를 한 번에 조회합니다.
+- **2단계 페이징 전략**: 1:N 관계의 페이징 조회 시 발생할 수 있는 메모리 과부하 및 카테시안 곱 문제를 해결하기 위해, 먼저 ID 목록을 조회한 뒤 해당 ID들에 대해 Fetch Join을 수행합니다.
 
-## 요청 및 응답 예시
-
-### 상품 등록 요청
-
+### 3. 예외 처리 아키텍처
+- `GlobalExceptionHandler`를 통해 전역적으로 예외를 관리하며, 일관된 `ErrorResponse` 형식을 반환합니다.
+- **대표 예외 상황**:
+    - `C001 (INVALID_INPUT_VALUE)`: 재고 부족, 잘못된 가격/수량, 유효하지 않은 주문 상태 전이 등
+    - `C003 (ENTITY_NOT_FOUND)`: 존재하지 않는 상품/주문 조회
+    - `C005 (INVALID_TYPE_VALUE)`: 잘못된 형식의 날짜 또는 Enum 값 입력
+- **에러 응답 예시**:
 ```json
 {
-  "name": "상품명",
-  "price": 10000,
-  "stockQuantity": 100,
-  "category": "FOOD"
-}
-```
-
-### 주문 생성 요청
-
-```json
-{
-  "items": [
+  "status": 400,
+  "code": "C001",
+  "message": "Invalid Input Value",
+  "errors": [
     {
-      "productId": 1,
-      "quantity": 2
-    },
-    {
-      "productId": 2,
-      "quantity": 1
+      "field": "stockQuantity",
+      "value": "-1",
+      "reason": "Stock quantity must be 0 or greater"
     }
   ]
 }
 ```
 
-### 주문 상태 변경 요청
+## 실행 및 테스트
 
-```json
-{
-  "status": "COMPLETED"
-}
-```
-
-### 에러 응답
-
-```json
-{
-  "code": "INSUFFICIENT_STOCK",
-  "message": "상품 재고가 부족합니다.",
-  "status": 400
-}
-```
-
-## 예외 처리
-
-다음 예외 상황을 반드시 처리합니다.
-
-- 존재하지 않는 상품에 대한 주문 요청
-- 재고 수량이 부족한 상품 주문
-- 허용되지 않은 주문 상태 변경 요청
-- 존재하지 않는 주문 조회 또는 상태 변경 요청
-- 주문 항목이 비어 있는 주문 생성 요청
-- 0 이하의 주문 수량
-- 0 미만의 상품 가격 또는 재고 수량
-
-예외 응답은 공통 에러 응답 형식으로 통일합니다.
-
-## 트랜잭션 및 동시성 처리
-
-재고 차감은 데이터 정합성이 중요한 작업이므로 주문 상태 변경과 재고 변경을 하나의 트랜잭션 안에서 처리합니다.
-
-동시에 여러 주문이 같은 상품의 재고를 차감할 수 있으므로, 상태 변경 대상 주문과 재고 변경 대상 상품을 조회할 때 락을 사용합니다. 기본 구현 방향은 주문 row와 상품 row에 비관적 락을 적용하는 방식입니다.
-
-```text
-주문 row lock -> 상품 row lock -> 상태 전이 검증 -> 재고 검증/변경 -> 주문 상태 변경
-```
-
-이 과정을 하나의 트랜잭션으로 묶어, 동시에 주문 완료 요청이 들어오더라도 재고가 음수가 되거나 중복 차감되지 않도록 합니다.
-
-주문 상태 변경 API는 대상 주문을 비관적 쓰기 락으로 조회한 뒤 상태 전이 가능 여부를 검증합니다. 재고 변경이 필요한 상태 전이에서는 주문 row 락을 획득한 뒤, 주문 항목의 상품 ID를 정렬해 상품 row 비관적 락을 획득합니다.
-
-여러 상품의 재고를 한 주문에서 함께 차감할 때는 상품 ID 기준으로 정렬해 락 획득 순서를 일정하게 유지합니다. 이를 통해 동시 주문 처리 중 deadlock 가능성을 줄입니다.
-
-## 문서 구조
-
-- `requirements.md`: 과제 원문 중 구현 대상 요구사항
-- `docs/project/standards/architecture.md`: API 서버 구조, 도메인 모델, 상태 전이, 트랜잭션/동시성 정책
-- `docs/project/standards/implementation_order.md`: 구현 레이어 순서
-- `docs/project/standards/testing_profile.md`: 테스트 전략과 필수 검증 범위
-- `docs/project/standards/quality_gate_profile.md`: 품질 게이트와 실패 기준
-- `docs/task/001_order-system-api/requirements.md`: 구현 단위 요구사항 분석
-- `docs/task/001_order-system-api/plan.md`: 구현 계획
-
-## 테스트 계획
-
-주요 비즈니스 로직에 대해 단위 테스트 또는 통합 테스트를 작성합니다.
-
-테스트 대상은 다음과 같습니다.
-
-- 상품 등록 성공
-- 상품 수정 성공
-- 주문 생성 성공
-- 존재하지 않는 상품으로 주문 생성 실패
-- 재고 부족 시 주문 완료 실패
-- 주문 완료 시 상품 재고 차감
-- 주문 취소 시 상품 재고 복구
-- 허용되지 않은 주문 상태 변경 실패
-- 동시에 주문 완료 요청이 발생해도 재고가 정확하게 차감되는지 검증
-
-## 성능 고려사항
-
-주문 데이터가 많아질 경우 주문 목록 조회, 주문 상태별 조회, 기간별 조회에서 성능 문제가 발생할 수 있습니다.
-
-이를 개선하기 위해 다음 방안을 고려합니다.
-
-- 주문 생성일 기준 인덱스 적용
-- 주문 상태 기준 인덱스 적용
-- 상태와 기간을 함께 사용하는 복합 인덱스 검토
-- 주문 목록 조회 시 페이징 필수 적용
-- 주문 상세 조회 시 `OrderItem`, `Product` 조회 과정에서 N+1 문제가 발생하지 않도록 fetch join 또는 EntityGraph 사용
-- 동적 검색 조건이 필요한 상품 목록 및 주문 목록 조회에는 QueryDSL 사용
-
-## 실행 방법
-
-구현 완료 후 다음 명령어로 애플리케이션을 실행합니다.
-
+### 실행 방법
 ```bash
 ./mvnw spring-boot:run
 ```
 
-테스트는 다음 명령어로 실행합니다.
-
+### 테스트 실행
 ```bash
 ./mvnw test
 ```
+- 단위 테스트, 서비스 레이어 테스트, MockMvc 기반의 API 통합 테스트를 포함합니다.
+- 동시성 테스트를 통해 다중 쓰레드 환경에서의 재고 차감 정합성을 검증합니다.
 
-## H2 Database
+## 프로젝트 구조 및 상세 문서
 
-개발 및 테스트 환경에서는 H2 Database를 사용합니다.
-
-예상 접속 정보는 다음과 같습니다.
-
-```text
-JDBC URL: jdbc:h2:mem:order-system
-Username: sa
-Password:
-```
-
-## 제출 방법
-
-완성된 소스는 지원자 GitHub 계정의 private repository에 push합니다.
-
-push 완료 후 collaborator로 `nhnkcp-kpos`를 추가하여 제출합니다.
+- [요구사항 명세](requirements.md)
+- [아키텍처 가이드](docs/project/standards/architecture.md)
+- [테스트 전략](docs/project/standards/testing_profile.md)
+- [결정 기록(ADR)](docs/project/decisions/README.md)
+- [태스크 히스토리](docs/task/)
