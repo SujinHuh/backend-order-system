@@ -12,9 +12,12 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
@@ -54,9 +57,14 @@ public class OrderService {
     }
 
     public OrderResponse getOrder(Long id) {
-        Order order = orderRepository.findById(id)
+        Order order = orderRepository.findByIdWithItemsAndProducts(id)
                 .orElseThrow(() -> new EntityNotFoundException("Order not found with id: " + id));
         return OrderResponse.from(order);
+    }
+
+    public Page<OrderResponse> getOrders(OrderStatus status, LocalDateTime from, LocalDateTime to, Pageable pageable) {
+        return orderRepository.search(status, from, to, pageable)
+                .map(OrderResponse::from);
     }
 
     private void lockProducts(List<Long> productIds) {

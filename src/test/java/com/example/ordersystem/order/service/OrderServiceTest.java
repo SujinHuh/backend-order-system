@@ -15,8 +15,13 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -110,6 +115,60 @@ class OrderServiceTest {
         // when & then
         assertThatThrownBy(() -> orderService.updateStatus(999L, OrderStatus.ACCEPTED))
                 .isInstanceOf(EntityNotFoundException.class);
+    }
+
+    @Test
+    @DisplayName("주문 단건을 주문 항목과 상품 정보 조회 경로로 조회한다.")
+    void getOrder() {
+        // given
+        Product product = createProduct(1L, "Product", 1000L);
+        Order order = Order.createOrder();
+        order.addOrderItem(product, 1);
+        ReflectionTestUtils.setField(order, "id", 1L);
+        given(orderRepository.findByIdWithItemsAndProducts(1L)).willReturn(Optional.of(order));
+
+        // when
+        OrderResponse response = orderService.getOrder(1L);
+
+        // then
+        assertThat(response.getId()).isEqualTo(1L);
+        assertThat(response.getOrderItems()).hasSize(1);
+        assertThat(response.getOrderItems().get(0).getProductName()).isEqualTo("Product");
+        verify(orderRepository).findByIdWithItemsAndProducts(1L);
+    }
+
+    @Test
+    @DisplayName("존재하지 않는 주문을 단건 조회하면 예외가 발생한다.")
+    void getOrder_notFound() {
+        // given
+        given(orderRepository.findByIdWithItemsAndProducts(999L)).willReturn(Optional.empty());
+
+        // when & then
+        assertThatThrownBy(() -> orderService.getOrder(999L))
+                .isInstanceOf(EntityNotFoundException.class);
+    }
+
+    @Test
+    @DisplayName("주문 목록을 상태와 기간 조건으로 페이징 조회한다.")
+    void getOrders() {
+        // given
+        Product product = createProduct(1L, "Product", 1000L);
+        Order order = Order.createOrder();
+        order.addOrderItem(product, 1);
+        ReflectionTestUtils.setField(order, "id", 1L);
+        Pageable pageable = PageRequest.of(0, 10);
+        LocalDateTime from = LocalDateTime.of(2026, 1, 1, 0, 0);
+        LocalDateTime to = LocalDateTime.of(2026, 1, 31, 23, 59);
+        given(orderRepository.search(OrderStatus.PENDING, from, to, pageable))
+                .willReturn(new PageImpl<>(List.of(order), pageable, 1));
+
+        // when
+        Page<OrderResponse> result = orderService.getOrders(OrderStatus.PENDING, from, to, pageable);
+
+        // then
+        assertThat(result.getContent()).hasSize(1);
+        assertThat(result.getContent().get(0).getOrderItems().get(0).getProductName()).isEqualTo("Product");
+        verify(orderRepository).search(OrderStatus.PENDING, from, to, pageable);
     }
 
     private Product createProduct(Long id, String name, long price) {
