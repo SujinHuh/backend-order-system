@@ -110,9 +110,51 @@ class OrderConcurrencyIntegrationTest {
         assertThat(reloadedOrder.getStatus()).isEqualTo(OrderStatus.COMPLETED);
     }
 
+    @Test
+    @DisplayName("같은 완료 주문의 동시 취소 요청은 재고를 중복 복구하지 않는다.")
+    void concurrentCancel_sameCompletedOrder_doesNotRestoreStockTwice() throws Exception {
+        Product product = productRepository.save(Product.builder()
+                .name("Cancel Product")
+                .price(1000L)
+                .stockQuantity(10)
+                .category(Category.FOOD)
+                .build());
+        Long orderId = orderService.createOrder(List.of(new OrderService.OrderItemRequest(product.getId(), 3))).getId();
+        orderService.updateStatus(orderId, OrderStatus.ACCEPTED);
+        orderService.updateStatus(orderId, OrderStatus.COMPLETED);
+
+        List<Callable<Result>> tasks = new ArrayList<>();
+        for (int i = 0; i < 5; i++) {
+            tasks.add(() -> cancelOrder(orderId));
+        }
+
+        List<Result> results = runConcurrently(tasks);
+
+        long successCount = results.stream().filter(Result::isSuccess).count();
+        long invalidTransitionCount = results.stream()
+                .filter(result -> result.failure() instanceof BusinessException)
+                .count();
+        Product reloadedProduct = productRepository.findById(product.getId()).orElseThrow();
+        Order reloadedOrder = orderRepository.findById(orderId).orElseThrow();
+
+        assertThat(successCount).isEqualTo(1);
+        assertThat(invalidTransitionCount).isEqualTo(4);
+        assertThat(reloadedProduct.getStockQuantity()).isEqualTo(10);
+        assertThat(reloadedOrder.getStatus()).isEqualTo(OrderStatus.CANCELED);
+    }
+
     private Result completeOrder(Long orderId) {
         try {
             orderService.updateStatus(orderId, OrderStatus.COMPLETED);
+            return Result.success();
+        } catch (RuntimeException exception) {
+            return Result.failure(exception);
+        }
+    }
+
+    private Result cancelOrder(Long orderId) {
+        try {
+            orderService.updateStatus(orderId, OrderStatus.CANCELED);
             return Result.success();
         } catch (RuntimeException exception) {
             return Result.failure(exception);
