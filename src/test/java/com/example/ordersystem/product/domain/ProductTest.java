@@ -1,6 +1,5 @@
 package com.example.ordersystem.product.domain;
 
-import com.example.ordersystem.global.error.exception.BusinessException;
 import com.example.ordersystem.global.error.exception.InvalidValueException;
 import com.example.ordersystem.product.exception.NotEnoughStockException;
 import org.junit.jupiter.api.DisplayName;
@@ -49,6 +48,17 @@ class ProductTest {
     }
 
     @Test
+    @DisplayName("재고 추가 수량이 음수면 예외가 발생한다.")
+    void addStock_negative() {
+        // given
+        Product product = createProduct(1000L, 10);
+
+        // when & then
+        assertThatThrownBy(() -> product.addStock(-1))
+                .isInstanceOf(InvalidValueException.class);
+    }
+
+    @Test
     @DisplayName("재고를 차감한다.")
     void removeStock() {
         // given
@@ -59,6 +69,17 @@ class ProductTest {
 
         // then
         assertThat(product.getStockQuantity()).isEqualTo(5);
+    }
+
+    @Test
+    @DisplayName("재고 차감 수량이 음수면 예외가 발생한다.")
+    void removeStock_negative() {
+        // given
+        Product product = createProduct(1000L, 10);
+
+        // when & then
+        assertThatThrownBy(() -> product.removeStock(-1))
+                .isInstanceOf(InvalidValueException.class);
     }
 
     @Test

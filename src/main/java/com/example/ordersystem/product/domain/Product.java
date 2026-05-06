@@ -1,6 +1,5 @@
 package com.example.ordersystem.product.domain;
 
-import com.example.ordersystem.global.error.exception.BusinessException;
 import com.example.ordersystem.global.error.exception.InvalidValueException;
 import com.example.ordersystem.product.exception.NotEnoughStockException;
 import jakarta.persistence.*;
@@ -25,7 +24,7 @@ public class Product {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false)
+    @Column(nullable = false, length = 100)
     private String name;
 
     @Column(nullable = false)
@@ -39,9 +38,11 @@ public class Product {
     private Category category;
 
     @CreatedDate
+    @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
     @LastModifiedDate
+    @Column(nullable = false)
     private LocalDateTime updatedAt;
 
     @Builder

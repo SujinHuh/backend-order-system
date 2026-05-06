@@ -174,6 +174,21 @@ class ProductControllerTest {
     }
 
     @Test
+    @DisplayName("상품 등록 시 상품명이 100자를 초과하면 400 에러가 발생한다.")
+    void createProduct_nameTooLong() throws Exception {
+        // given
+        ProductCreateRequest request = new ProductCreateRequest("a".repeat(101), 1000L, 10, Category.FOOD);
+
+        // when & then
+        mockMvc.perform(post("/api/products")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("C001"))
+                .andExpect(jsonPath("$.errors").isArray());
+    }
+
+    @Test
     @DisplayName("상품 수정 시 재고 수량이 누락되면 400 에러가 발생한다.")
     void updateProduct_missingStockQuantity() throws Exception {
         // given

@@ -42,16 +42,16 @@
 - `POST /api/products`: 신규 상품 등록
 - `PUT /api/products/{id}`: 상품 정보 수정
 - `GET /api/products/{id}`: 상품 상세 조회
-- `GET /api/products`: 상품 목록 조회 (카테고리 필터링 및 페이징 지원)
-    - 예: `/api/products?category=FOOD&page=0&size=10`
+- `GET /api/products`: 상품 목록 조회 (카테고리 필터링, 페이징, 정렬 지원)
+    - 예: `/api/products?category=FOOD&page=0&size=10&sort=id,desc`
 
 ### 주문 API
 - `POST /api/orders`: 주문 생성 (초기 상태 `PENDING`)
 - `PATCH /api/orders/{id}/status`: 주문 상태 변경 (상태 전이 및 재고 처리 수반)
 - `GET /api/orders/{id}`: 주문 상세 조회 (주문 항목 및 상품 정보 Fetch Join)
-- `GET /api/orders`: 주문 목록 조회 (상태, 기간 필터링 및 페이징 지원)
+- `GET /api/orders`: 주문 목록 조회 (상태, 기간 필터링, 페이징, 정렬 지원)
     - **기간 조회 조건**: `from` 및 `to`는 ISO local date-time 형식이며, **경계값을 포함(Inclusive)**하여 조회합니다 (`createdAt >= from AND createdAt <= to`).
-    - 예: `/api/orders?status=COMPLETED&from=2026-05-01T00:00:00&to=2026-05-31T23:59:59`
+    - 예: `/api/orders?status=COMPLETED&from=2026-05-01T00:00:00&to=2026-05-31T23:59:59&page=0&size=10&sort=createdAt,desc`
 
 ## 기술적 해결 방안
 
